@@ -1,33 +1,33 @@
 # 🐍 payment-service
 
-Backend service for PaymentOS — a sample Internal Developer Platform demo application.
+Python Flask backend service for PaymentOS — created automatically via the IDP Lab Backstage golden path template.
 
-## What is this?
+## What it does
 
-This service was created automatically via the **IDP Lab Backstage golden path template**. A developer filled a form in Backstage and this entire repo — including CI pipeline and Kubernetes deployment — was generated automatically.
+Provides an encryption API that the `payment-ui` frontend calls. Returns encrypted text along with Kubernetes metadata proving the request was processed by a real pod inside the cluster.
 
-## Features
+## How it was created
 
-- **`POST /api/encrypt`** — accepts a message, returns it encrypted with metadata
-- Returns pod name, namespace, processing time, and timestamp
-- Proves real backend processing inside Kubernetes
+A developer opened Backstage, clicked **Create → New Service**, selected:
+- Language: **Python**
+- Starter: **Full Sample App**
+- Namespace: **dev**
+- Team: **team-backend**
 
-## Tech Stack
-
-- **Runtime:** Python + Flask
-- **Deployed to:** Kubernetes (`dev` namespace)
-- **CI:** GitHub Actions → Docker Hub
-- **CD:** ArgoCD (GitOps)
+Backstage automatically created this repo, CI pipeline, and deployment — zero manual Kubernetes work.
 
 ## API
 
 ### `POST /api/encrypt`
 
-```json
-// Request
-{ "message": "Hello from the demo!" }
+```bash
+curl -X POST http://localhost:8082/api/encrypt \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello from the demo!"}'
+```
 
-// Response
+Response:
+```json
 {
   "success": true,
   "encrypted": "b2xsZUg=...",
@@ -47,7 +47,14 @@ This service was created automatically via the **IDP Lab Backstage golden path t
 { "status": "healthy", "pod": "payment-service-xxx" }
 ```
 
-## Running locally
+## Tech Stack
+
+- **Runtime:** Python 3.11 + Flask + flask-cors
+- **Deployed to:** Kubernetes `dev` namespace
+- **CI:** GitHub Actions → `sky2108/payment-service` on Docker Hub
+- **CD:** ArgoCD (GitOps via idp-lab-gitops)
+
+## Running Locally
 
 ```bash
 pip install -r requirements.txt
@@ -55,12 +62,12 @@ python app.py
 # → http://localhost:8080
 ```
 
-## CI/CD
+## CI/CD Flow
 
-Every push to `main`:
+Every merge to `main`:
 1. GitHub Actions builds Docker image
-2. Pushes to `sky2108/payment-service:<sha>` on Docker Hub
+2. Pushes `sky2108/payment-service:<sha>` to Docker Hub
 3. Updates `apps/payment-service/deployment.yaml` in idp-lab-gitops
-4. ArgoCD detects change and redeploys automatically
+4. ArgoCD detects change → redeploys automatically
 
-Part of [idp-lab-org](https://github.com/idp-lab-org) — Mini IDP portfolio project.
+Part of [idp-lab-org](https://github.com/idp-lab-org) — built by [@sky2194](https://github.com/sky2194)
