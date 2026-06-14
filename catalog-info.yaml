@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: payment-service
+  description: Payment backend service
+  annotations:
+    github.com/project-slug: idp-lab-org/payment-service
+spec:
+  type: service
+  lifecycle: development
+  owner: team-backend
