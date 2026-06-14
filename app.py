@@ -1,70 +1,62 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+import base64
+import hashlib
+import time
 import random
-from datetime import datetime, timedelta
+import string
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-MERCHANTS = [
-    "Starbucks", "Amazon", "Netflix", "Uber", "Apple Store",
-    "Whole Foods", "Spotify", "Shell Gas", "Target", "Airbnb"
-]
+POD_NAME = os.environ.get("HOSTNAME", "payment-service-local")
 
-CATEGORIES = [
-    "Food & Drink", "Shopping", "Entertainment", "Transport",
-    "Utilities", "Travel", "Health", "Groceries"
-]
+def mock_encrypt(message):
+    reversed_msg = message[::-1]
+    encoded = base64.b64encode(reversed_msg.encode()).decode()
+    return encoded[:20] + "..." if len(encoded) > 20 else encoded
 
-def generate_transactions(n=10):
-    transactions = []
-    for i in range(n):
-        amount = round(random.uniform(5.0, 500.0), 2)
-        status = random.choice(["completed", "completed", "completed", "pending", "failed"])
-        date = datetime.now() - timedelta(days=random.randint(0, 30))
-        transactions.append({
-            "id": f"TXN{1000 + i}",
-            "merchant": random.choice(MERCHANTS),
-            "category": random.choice(CATEGORIES),
-            "amount": amount,
-            "currency": "USD",
-            "status": status,
-            "date": date.strftime("%Y-%m-%d %H:%M"),
-            "card": f"**** **** **** {random.randint(1000, 9999)}"
-        })
-    return sorted(transactions, key=lambda x: x["date"], reverse=True)
+def generate_message_id():
+    return "MSG-" + ''.join(random.choices(string.digits, k=4))
+
+def generate_key_id():
+    return "KEY-" + hashlib.md5(str(time.time()).encode()).hexdigest()[:8].upper()
 
 @app.route("/")
 def index():
-    return jsonify({
-        "service": "payment-service",
-        "version": "1.0.0",
-        "status": "healthy"
-    })
+    return jsonify({"service": "payment-service", "version": "1.0.0", "status": "healthy", "pod": POD_NAME})
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "healthy"})
+    return jsonify({"status": "healthy", "pod": POD_NAME})
 
-@app.route("/api/transactions")
-def transactions():
-    return jsonify({
-        "transactions": generate_transactions(10),
-        "total": 10
-    })
+@app.route("/api/encrypt", methods=["POST"])
+def encrypt():
+    data = request.get_json()
+    message = data.get("message", "")
 
-@app.route("/api/summary")
-def summary():
-    txns = generate_transactions(20)
-    total_spent = sum(t["amount"] for t in txns if t["status"] == "completed")
-    pending = sum(1 for t in txns if t["status"] == "pending")
-    failed = sum(1 for t in txns if t["status"] == "failed")
+    if not message:
+        return jsonify({"error": "Message is required"}), 400
+
+    if len(message) > 200:
+        return jsonify({"error": "Message too long (max 200 chars)"}), 400
+
+    start = time.time()
+    encrypted = mock_encrypt(message)
+    duration_ms = round((time.time() - start) * 1000 + random.uniform(5, 15), 2)
+
     return jsonify({
-        "total_spent": round(total_spent, 2),
-        "transaction_count": len(txns),
-        "pending_count": pending,
-        "failed_count": failed,
-        "currency": "USD"
+        "success": True,
+        "original_length": len(message),
+        "encrypted": encrypted,
+        "message_id": generate_message_id(),
+        "key_id": generate_key_id(),
+        "algorithm": "AES-256-CBC (mock)",
+        "processed_by": POD_NAME,
+        "namespace": "dev",
+        "processing_time_ms": duration_ms,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
     })
 
 if __name__ == "__main__":
